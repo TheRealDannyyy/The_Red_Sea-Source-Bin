@@ -172,6 +172,7 @@ CWeaponPistol::CWeaponPistol( void )
 void CWeaponPistol::Precache( void )
 {
 	BaseClass::Precache();
+	UTIL_PrecacheOther("hunter_flechette");
 }
 
 //-----------------------------------------------------------------------------
@@ -248,7 +249,30 @@ void CWeaponPistol::PrimaryAttack( void )
 		pOwner->ViewPunchReset();
 	}
 
-	BaseClass::PrimaryAttack();
+	// Firerate flechette
+	m_flLastAttackTime = gpGlobals->curtime;
+	m_flSoonestPrimaryAttack = gpGlobals->curtime + PISTOL_FASTEST_REFIRE_TIME;
+	m_flNextPrimaryAttack = gpGlobals->curtime + 0.8f;
+
+	// Fire Main flechette
+	Vector    vForward, vRight, vUp;
+	pOwner->EyeVectors(&vForward, &vRight, &vUp);
+	QAngle angAiming = pOwner->EyeAngles();
+	Vector vecSrc = pOwner->Weapon_ShootPosition() + vForward * 20.0f;
+	Vector vecDir;
+	AngleVectors(angAiming, &vecDir);
+	Vector vecAbsEnd = vecSrc + (vecDir * MAX_TRACE_LENGTH);
+	Vector vecShotDir = (vecAbsEnd - vecSrc).Normalized();
+	CBaseEntity *pBolt = (CBaseEntity *)CreateEntityByName("hunter_flechette");
+	UTIL_SetOrigin(pBolt, vecSrc);
+	pBolt->SetAbsAngles(angAiming);
+	pBolt->Spawn();
+	pBolt->Activate();
+	pBolt->SetOwnerEntity(pOwner);
+	pBolt->SetAbsVelocity(vecShotDir * 2000.0f);
+	SendWeaponAnim(GetPrimaryAttackActivity());
+	WeaponSound(SINGLE);
+	pOwner->DoMuzzleFlash();
 
 	// Add an accuracy penalty which can move past our maximum penalty time if we're really spastic
 	m_flAccuracyPenalty += PISTOL_ACCURACY_SHOT_PENALTY_TIME;
